@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PUNTRACKS</title>
+<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0a0a0a"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="PUNTRACKS"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.min.css">
+<style>
+:root{--bg:#0a0a0a;--card:#1c1c1c;--lime:#b6ff00;--txt:#fff;--mut:#9a9a9a}
+*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow:hidden}
+#app{position:fixed;inset:0;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top)}
+header{padding:10px 12px;background:var(--bg);z-index:1000}
+.logo{font-weight:900;letter-spacing:2px;font-size:20px}.logo b{color:var(--lime)}
+.row{display:flex;gap:8px;margin-top:8px}
+input{flex:1;background:var(--card);border:1px solid #333;color:var(--txt);padding:11px 12px;border-radius:10px;font-size:15px;outline:none;min-width:0}
+input:focus{border-color:var(--lime)}
+.btn{background:var(--lime);color:#000;border:0;padding:11px 14px;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer}
+.btn.g{background:var(--card);color:var(--txt);border:1px solid #333}
+.chips{display:flex;gap:6px;margin-top:8px;overflow-x:auto}
+.chip{background:var(--card);border:1px solid #333;color:var(--txt);padding:6px 12px;border-radius:20px;font-size:12px;white-space:nowrap;cursor:pointer}
+.chip.on{background:var(--lime);color:#000;border-color:var(--lime);font-weight:700}
+main{flex:1;position:relative;min-height:0}
+#map{position:absolute;inset:0}
+.view{position:absolute;inset:0;background:var(--bg);overflow:auto;padding:14px;display:none;z-index:900}
+.view.on{display:block}
+nav{display:flex;background:#111;border-top:1px solid #222;padding-bottom:env(safe-area-inset-bottom);z-index:1000}
+nav button{flex:1;background:none;border:0;color:var(--mut);padding:10px 0;font-size:11px;font-weight:700;cursor:pointer}
+nav button.on{color:var(--lime)}
+nav span{display:block;font-size:19px}
+.item{background:var(--card);border-radius:12px;padding:12px;margin-bottom:10px}
+.item h3{font-size:15px}.item p{color:var(--mut);font-size:12px;margin:3px 0 8px}
+.item .acts{display:flex;gap:6px;flex-wrap:wrap}
+.pin{width:30px;height:30px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #000;display:flex;align-items:center;justify-content:center}
+.pin i{transform:rotate(45deg);font-style:normal;font-size:14px}
+.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--card);color:var(--txt)}
+.leaflet-popup-content{margin:12px}
+.pop h3{font-size:15px;margin-bottom:2px}.pop p{color:var(--mut);font-size:12px;margin-bottom:8px}
+#status{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:#000c;border:1px solid #333;padding:6px 12px;border-radius:20px;font-size:12px;z-index:800;display:none}
+.stars button{background:none;border:0;font-size:22px;color:#444;cursor:pointer}.stars button.on{color:var(--lime)}
+.h{font-size:18px;font-weight:900;margin-bottom:10px}
+.mut{color:var(--mut);font-size:13px}
+textarea{width:100%;background:var(--bg);border:1px solid #333;color:var(--txt);border-radius:8px;padding:8px;margin:6px 0;font-family:inherit}
+</style>
+</head>
+<body>
+<div id="app">
+<header>
+  <div class="logo">PUN<b>TRACKS</b></div>
+  <div class="row"><input id="q" placeholder="Busca un skatepark o pump track" enterkeyhint="search"><button class="btn" id="go">IR</button><button class="btn g" id="loc">📍</button></div>
+  <div class="chips" id="chips">
+    <div class="chip on" data-f="all">Todos</div><div class="chip" data-f="skatepark">Skatepark</div><div class="chip" data-f="pump">Pump track</div><div class="chip" data-f="fav">Favoritos</div>
+  </div>
+</header>
+<main>
+  <div id="map"></div><div id="status"></div>
+  <div class="view" id="v-fav"><div class="h">MIS FAVORITOS</div><div id="favlist"></div></div>
+  <div class="view" id="v-near"><div class="h">CERCANOS</div><div id="nearlist"></div></div>
+  <div class="view" id="v-rev"><div class="h">RESEÑAS PUNTRACKS</div><div id="revbox"></div></div>
+  <div class="view" id="v-routes"><div class="h">RUTAS PUNTRACKS</div><div id="routelist"></div></div>
+</main>
+<nav>
+  <button data-v="map" class="on"><span>🗺️</span>MAPA</button>
+  <button data-v="near"><span>📍</span>CERCANOS</button>
+  <button data-v="fav"><span>♥</span>FAVORITOS</button>
+  <button data-v="routes"><span>🛣️</span>RUTAS</button>
+</nav>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
+<script>
+(function(){
+if(typeof L==='undefined'){document.body.insertAdjacentHTML('afterbegin','<p style="position:fixed;z-index:9999;top:80px;left:12px;right:12px;background:#300;padding:12px;border-radius:10px">No se pudo cargar la librería del mapa (Leaflet). Comprueba tu conexión a internet y que abres el archivo en un navegador normal.</p>');return}
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const store={get(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+let favs=store.get('pt_favs',{}), reviews=store.get('pt_revs',{}), route=store.get('pt_route',[]);
+let spots={}, filter='all', user=null, userMarker=null;
+
+const map=L.map('map',{zoomControl:false}).setView([40.2,-3.7],6);
+L.control.zoom({position:'bottomright'}).addTo(map);
+let fallback=false;
+const carto=L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19,subdomains:'abcd',attribution:'© OpenStreetMap © CARTO'}).addTo(map);
+carto.on('tileerror',()=>{if(fallback)return;fallback=true;map.removeLayer(carto);L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map)});
+setTimeout(()=>map.invalidateSize(),300);window.addEventListener('resize',()=>map.invalidateSize());
+const cluster=L.markerClusterGroup({maxClusterRadius:50}); map.addLayer(cluster);
+
+function status(t){const s=$('#status');if(!t){s.style.display='none';return}s.textContent=t;s.style.display='block'}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function kind(t){const n=(t.name||'').toLowerCase();if(t.sport==='bmx'||t.sport==='cycling'||/pump/.test(n)||t.track==='pump')return 'pump';return 'skatepark'}
+function dist(a,b){const R=6371,r=x=>x*Math.PI/180,dl=r(b[0]-a[0]),dn=r(b[1]-a[1]);const h=Math.sin(dl/2)**2+Math.cos(r(a[0]))*Math.cos(r(b[0]))*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(h))}
+function avg(id){const r=reviews[id]||[];return r.length?(r.reduce((a,x)=>a+x.s,0)/r.length).toFixed(1):null}
+function icon(k){const c=k==='pump'?'#00d4ff':'#b6ff00';return L.divIcon({className:'',html:`<div class="pin" style="background:${c}"><i>${k==='pump'?'〰':'🛹'}</i></div>`,iconSize:[30,30],iconAnchor:[15,30],popupAnchor:[0,-28]})}
+
+async function load(){
+  if(map.getZoom()<8){status('Acerca el zoom para cargar spots');return}
+  const b=map.getBounds(),bb=[b.getSouth(),b.getWest(),b.getNorth(),b.getEast()].map(x=>x.toFixed(5)).join(',');
+  status('Cargando spots…');
+  const q=`[out:json][timeout:25];(nwr["leisure"="skatepark"](${bb});nwr["sport"="skateboard"](${bb});nwr["sport"="bmx"]["name"~"pump",i](${bb});nwr["track"="pump"](${bb}););out center tags 400;`;
+  try{
+    const r=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(q)});
+    if(!r.ok)throw new Error(r.status);
+    const j=await r.json();
+    j.elements.forEach(e=>{
+      const lat=e.lat??e.center?.lat,lon=e.lon??e.center?.lon;if(lat==null)return;
+      const id=e.type[0]+e.id;if(spots[id])return;
+      const t=e.tags||{};
+      spots[id]={id,lat,lon,name:t.name||(kind(t)==='pump'?'Pump track':'Skatepark'),kind:kind(t),city:t['addr:city']||'',fee:t.fee==='yes'?'De pago':(t.fee==='no'?'Gratuito':''),surface:t.surface||'',lit:t.lit==='yes'?'Iluminado':'',upd:new Date().toISOString().slice(0,10)};
+    });
+    status(Object.keys(spots).length+' spots (OpenStreetMap)');setTimeout(()=>status(''),2500);render();
+  }catch(err){status('Overpass no responde. Reintenta en unos segundos.');setTimeout(()=>status(''),4000)}
+}
+
+function visible(){return Object.values(spots).filter(s=>filter==='all'||(filter==='fav'?favs[s.id]:s.kind===filter))}
+function popup(s){
+  const a=avg(s.id),d=user?dist([user.lat,user.lon],[s.lat,s.lon]).toFixed(1)+' km':'';
+  return `<div class="pop"><h3>${esc(s.name)}</h3><p>${s.kind==='pump'?'Pump track':'Skatepark'} ${esc(s.city)} ${d?'· '+d:''}<br>${a?'★ PUNTRACKS '+a:'Sin reseñas aún'} ${esc(s.fee)}</p>
+  <div class="acts" style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn" data-a="go" data-id="${s.id}">CÓMO LLEGAR</button><button class="btn g" data-a="fav" data-id="${s.id}">${favs[s.id]?'♥':'♡'}</button><button class="btn g" data-a="rev" data-id="${s.id}">⭐</button><button class="btn g" data-a="rt" data-id="${s.id}">＋ Ruta</button></div></div>`}
+function render(){
+  cluster.clearLayers();
+  visible().forEach(s=>{const m=L.marker([s.lat,s.lon],{icon:icon(s.kind)});m.bindPopup(()=>popup(s));cluster.addLayer(m)});
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-a]');if(!b)return;const s=spots[b.dataset.id];if(!s)return;
+  const a=b.dataset.a;
+  if(a==='go'){const o=user?`&origin=${user.lat},${user.lon}`:'';window.open(`https://www.google.com/maps/dir/?api=1${o}&destination=${s.lat},${s.lon}&travelmode=driving`,'_blank')}
+  if(a==='fav'){favs[s.id]?delete favs[s.id]:favs[s.id]=s;store.set('pt_favs',favs);map.closePopup();render();lists();status(favs[s.id]?'Añadido a favoritos':'Quitado de favoritos');setTimeout(()=>status(''),1500)}
+  if(a==='rev'){openRev(s)}
+  if(a==='rt'){if(!route.find(r=>r.id===s.id)){route.push(s);store.set('pt_route',route)}status('Añadido a tu ruta');setTimeout(()=>status(''),1500);lists()}
+  if(a==='rmfav'){delete favs[b.dataset.id];store.set('pt_favs',favs);render();lists()}
+  if(a==='rmrt'){route=route.filter(r=>r.id!==b.dataset.id);store.set('pt_route',route);lists()}
+  if(a==='show'){show('map');map.setView([s.lat,s.lon],16);cluster.eachLayer(l=>{const p=l.getLatLng();if(p.lat===s.lat&&p.lng===s.lon)setTimeout(()=>l.openPopup(),400)})}
+});
+
+function itemHtml(s,extra){const d=user?dist([user.lat,user.lon],[s.lat,s.lon]).toFixed(1)+' km · ':'';
+  return `<div class="item"><h3>${esc(s.name)}</h3><p>${d}${s.kind==='pump'?'Pump track':'Skatepark'} ${esc(s.city)}</p><div class="acts"><button class="btn g" data-a="show" data-id="${s.id}">Ver en mapa</button><button class="btn" data-a="go" data-id="${s.id}">CÓMO LLEGAR</button>${extra||''}</div></div>`}
+function lists(){
+  const f=Object.values(favs);
+  if(user)f.sort((a,b)=>dist([user.lat,user.lon],[a.lat,a.lon])-dist([user.lat,user.lon],[b.lat,b.lon]));
+  Object.values(favs).forEach(s=>spots[s.id]=spots[s.id]||s);
+  $('#favlist').innerHTML=f.length?f.map(s=>itemHtml(s,`<button class="btn g" data-a="rmfav" data-id="${s.id}">Quitar ♥</button>`)).join(''):'<p class="mut">Aún no tienes favoritos. Pulsa ♡ en una chincheta.</p>';
+  let near=Object.values(spots);
+  if(user){near.sort((a,b)=>dist([user.lat,user.lon],[a.lat,a.lon])-dist([user.lat,user.lon],[b.lat,b.lon]));near=near.slice(0,20)}
+  $('#nearlist').innerHTML=user?(near.length?near.map(s=>itemHtml(s)).join(''):'<p class="mut">Mueve el mapa para cargar spots.</p>'):'<p class="mut">Pulsa 📍 para activar tu ubicación y ver los más cercanos.</p>';
+  let h='';
+  if(route.length){
+    h+=route.map((s,i)=>`<div class="item"><h3>${i+1}. ${esc(s.name)}</h3><div class="acts"><button class="btn g" data-a="rmrt" data-id="${s.id}">Quitar</button></div></div>`).join('');
+    const pts=route.map(s=>s.lat+','+s.lon);
+    const dst=pts[pts.length-1],wp=pts.slice(0,-1).join('|');
+    const url=`https://www.google.com/maps/dir/?api=1${user?`&origin=${user.lat},${user.lon}`:''}&destination=${dst}${wp?`&waypoints=${encodeURIComponent(wp)}`:''}&travelmode=driving`;
+    h+=`<button class="btn" onclick="window.open('${url}','_blank')" style="width:100%">ABRIR RUTA EN GOOGLE MAPS</button><button class="btn g" id="clr" style="width:100%;margin-top:8px">Vaciar ruta</button>`;
+  }else h='<p class="mut">Añade varios spots con «＋ Ruta» desde el mapa.</p>';
+  $('#routelist').innerHTML=h;const c=$('#clr');if(c)c.onclick=()=>{route=[];store.set('pt_route',route);lists()};
+}
+
+function openRev(s){
+  show('rev');const rs=reviews[s.id]||[],a=avg(s.id);
+  $('#revbox').innerHTML=`<div class="item"><h3>${esc(s.name)}</h3><p>${a?'★ '+a+' ('+rs.length+' reseñas)':'Sin reseñas todavía'}</p>
+  <div class="stars" id="st">${[1,2,3,4,5].map(n=>`<button data-n="${n}">★</button>`).join('')}</div>
+  <textarea id="rt" rows="3" placeholder="Cuenta tu experiencia (suelo, ambiente, afluencia…)"></textarea>
+  <button class="btn" id="sv">PUBLICAR RESEÑA</button></div>`+rs.map(r=>`<div class="item"><h3>${'★'.repeat(r.s)}</h3><p>${esc(r.d)}</p><div>${esc(r.t)}</div></div>`).join('')+'<p class="mut">Las reseñas se guardan solo en este dispositivo (versión de prueba, sin servidor).</p>';
+  let sc=0;$$('#st button').forEach(b=>b.onclick=()=>{sc=+b.dataset.n;$$('#st button').forEach(x=>x.classList.toggle('on',+x.dataset.n<=sc))});
+  $('#sv').onclick=()=>{if(!sc){alert('Elige una puntuación');return}
+    reviews[s.id]=(reviews[s.id]||[]).filter(r=>r.me!==1);reviews[s.id].unshift({s:sc,t:$('#rt').value.slice(0,500),d:new Date().toISOString().slice(0,10),me:1});
+    store.set('pt_revs',reviews);openRev(s);render()};
+}
+
+function show(v){
+  $$('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v||(v==='rev'&&b.dataset.v==='map')));
+  $$('.view').forEach(x=>x.classList.remove('on'));
+  if(v!=='map')$('#v-'+v).classList.add('on');
+  if(v==='fav'||v==='near'||v==='routes')lists();
+}
+$$('nav button').forEach(b=>b.onclick=()=>show(b.dataset.v));
+$$('.chip').forEach(c=>c.onclick=()=>{$$('.chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');filter=c.dataset.f;render()});
+
+function locate(){
+  if(!navigator.geolocation){status('Sin GPS disponible');return}
+  status('Buscando tu ubicación…');
+  navigator.geolocation.getCurrentPosition(p=>{
+    user={lat:p.coords.latitude,lon:p.coords.longitude};
+    if(userMarker)map.removeLayer(userMarker);
+    userMarker=L.circleMarker([user.lat,user.lon],{radius:8,color:'#fff',fillColor:'#2979ff',fillOpacity:1}).addTo(map);
+    map.setView([user.lat,user.lon],13);status('');lists();
+  },()=>{status('Permiso de ubicación denegado');setTimeout(()=>status(''),3000)},{enableHighAccuracy:true,timeout:15000});
+}
+$('#loc').onclick=locate;
+
+async function search(){
+  const t=$('#q').value.trim();if(!t)return;
+  const low=t.toLowerCase(),hit=Object.values(spots).find(s=>s.name.toLowerCase().includes(low));
+  if(hit){map.setView([hit.lat,hit.lon],16);return}
+  status('Buscando…');
+  try{
+    const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=es&q='+encodeURIComponent(t));
+    const j=await r.json();
+    if(j[0]){map.setView([+j[0].lat,+j[0].lon],12);status('')}else status('Sin resultados');
+  }catch(e){status('Error de búsqueda')}
+  setTimeout(()=>status(''),2000);
+}
+$('#go').onclick=search;$('#q').addEventListener('keydown',e=>{if(e.key==='Enter')search()});
+
+let tm;map.on('moveend',()=>{clearTimeout(tm);tm=setTimeout(load,600)});
+Object.values(favs).forEach(s=>spots[s.id]=s);
+render();load();lists();
+})();
+</script>
+<script>if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))}</script>
+</body>
+</html>
